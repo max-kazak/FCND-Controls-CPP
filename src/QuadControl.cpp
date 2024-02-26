@@ -198,6 +198,8 @@ float QuadControl::AltitudeControl(float posZCmd, float velZCmd, float posZ, flo
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  velZCmd = CONSTRAIN(velZCmd, -maxAscentRate, maxDescentRate);
+
   float z_err = posZCmd - posZ;
   float z_err_dot = velZCmd - velZ;
 
@@ -291,7 +293,14 @@ float QuadControl::YawControl(float yawCmd, float yaw)
   float yawRateCmd=0;
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  yawCmd = fmod(yawCmd, 2.0 * F_PI);
   float err = yawCmd - yaw;
+  if (err > F_PI) {
+    err -= 2.0 * F_PI;
+  }
+  else if (err < -F_PI) {
+    err += 2.0 * F_PI;
+  }
   yawRateCmd = kpYaw * err;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
