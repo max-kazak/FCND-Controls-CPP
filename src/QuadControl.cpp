@@ -74,15 +74,15 @@ VehicleCommand QuadControl::GenerateMotorCommands(float collThrustCmd, V3F momen
   
   // motor order: front-left, front-right, rear-right, rear-left
 
-  float c = collThrustCmd;          // F1 + F2 + F3 + F4
-  float p = momentCmd.x / l;        // F1 - F2 - F3 + F4
-  float q = momentCmd.y / l;        // F1 + F2 - F3 - F4
-  float r = momentCmd.z / kappa;    // -F1 + F2 - F3 + F4
+  float c = collThrustCmd;          
+  float p = momentCmd.x / l;        
+  float q = momentCmd.y / l;        
+  float r = momentCmd.z / kappa;    
 
-  float F1 = (c + p + q + r) / 4.;
-  float F2 = (c - p + q - r) / 4.;
-  float F3 = (c + p - q - r) / 4.;
-  float F4 = (c - p - q + r) / 4.;
+  float F1 = (c + p + q - r) / 4.;
+  float F2 = (c - p + q + r) / 4.;
+  float F3 = (c + p - q + r) / 4.;
+  float F4 = (c - p - q - r) / 4.;
 
   cmd.desiredThrustsN[0] = CONSTRAIN(F1, minMotorThrust, maxMotorThrust);
   cmd.desiredThrustsN[1] = CONSTRAIN(F2, minMotorThrust, maxMotorThrust);
@@ -144,23 +144,29 @@ V3F QuadControl::RollPitchControl(V3F accelCmd, Quaternion<float> attitude, floa
   Mat3x3F R = attitude.RotationMatrix_IwrtB();
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  if ( collThrustCmd > 0 ) {
+    float c_c = -collThrustCmd / mass;
 
-  float c_c = -collThrustCmd / mass;
+    float b_x_a = R(0, 2);
+    float b_x_c = accelCmd.x / c_c;
+    b_x_c = CONSTRAIN(b_x_c, -maxTiltAngle, maxTiltAngle);
+    float b_x_err = b_x_c - b_x_a;
+    float b_x_c_dot = kpBank * b_x_err;
 
-  float b_x_a = R(0, 2);
-  float b_x_c = accelCmd.x / c_c;
-  b_x_c = CONSTRAIN(b_x_c, -maxTiltAngle, maxTiltAngle);
-  float b_x_err = b_x_c - b_x_a;
-  float b_x_c_dot = kpBank * b_x_err;
+    float b_y_a = R(1, 2);
+    float b_y_c = accelCmd.y / c_c;
+    b_y_c = CONSTRAIN(b_y_c, -maxTiltAngle, maxTiltAngle);
+    float b_y_err = b_y_c - b_y_a;
+    float b_y_c_dot = kpBank * b_y_err;
 
-  float b_y_a = R(1, 2);
-  float b_y_c = accelCmd.y / c_c;
-  b_y_c = CONSTRAIN(b_y_c, -maxTiltAngle, maxTiltAngle);
-  float b_y_err = b_y_c - b_y_a;
-  float b_y_c_dot = kpBank * b_y_err;
+    pqrCmd.x = (R(1, 0) * b_x_c_dot - R(0, 0) * b_y_c_dot) / R(2, 2);
+    pqrCmd.y = (R(1, 1) * b_x_c_dot - R(0, 1) * b_y_c_dot) / R(2, 2);
+  } else {
+    pqrCmd.x = 0.;
+    pqrCmd.y = 0.;
+  }
 
-  pqrCmd.x = 1 / R(2, 2) * (R(1, 0) * b_x_c_dot - R(0, 0) * b_y_c_dot);
-  pqrCmd.y = 1 / R(2, 2) * (R(1, 1) * b_x_c_dot - R(0, 1) * b_y_c_dot);
+  pqrCmd.z = 0;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -192,7 +198,22 @@ float QuadControl::AltitudeControl(float posZCmd, float velZCmd, float posZ, flo
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  float z_err = posZCmd - posZ;
+  float z_err_dot = velZCmd - velZ;
 
+  float b_z = R(2, 2);
+
+  float p_term = kpPosZ * z_err;
+  float d_term = kpVelZ * z_err_dot;
+
+  integratedAltitudeError += z_err * dt;
+  integratedAltitudeError = 0;
+  float i_term = integratedAltitudeError * KiPosZ;
+
+  float z_dot_dot_c = p_term + d_term + i_term + accelZCmd;
+
+  float acc = (z_dot_dot_c - CONST_GRAVITY) / b_z;
+  thrust = -acc * mass;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
   
@@ -229,8 +250,26 @@ V3F QuadControl::LateralPositionControl(V3F posCmd, V3F velCmd, V3F pos, V3F vel
   V3F accelCmd = accelCmdFF;
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  float vel_mag = velCmd.mag();
+  if (vel_mag > maxSpeedXY) {
+    velCmd *= maxSpeedXY / vel_mag;
+  }
 
-  
+  V3F pos_err = posCmd - pos;
+  V3F pos_dot_err = velCmd - vel;
+  pos_dot_err.z = 0;
+
+  V3F pos_p_term = kpPosXY * pos_err;
+  V3F pos_d_term = kpVelXY * pos_dot_err;
+
+  V3F pos_dot_dot_c = pos_p_term + pos_d_term;
+
+  accelCmd += pos_dot_dot_c;
+
+  float acc_mag = accelCmd.mag();
+  if (acc_mag > maxAccelXY) {
+    accelCmd *= maxAccelXY / acc_mag;
+  }
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
