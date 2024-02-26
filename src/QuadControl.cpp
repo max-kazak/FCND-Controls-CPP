@@ -207,7 +207,6 @@ float QuadControl::AltitudeControl(float posZCmd, float velZCmd, float posZ, flo
   float d_term = kpVelZ * z_err_dot;
 
   integratedAltitudeError += z_err * dt;
-  integratedAltitudeError = 0;
   float i_term = integratedAltitudeError * KiPosZ;
 
   float z_dot_dot_c = p_term + d_term + i_term + accelZCmd;
