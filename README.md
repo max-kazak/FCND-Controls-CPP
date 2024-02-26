@@ -39,7 +39,7 @@ Output:
 
 Thrusts are calculated by solving following equations for each individual motors: 
 
-![forces](animations/forces.png)
+![forces](animations/forces.jpg)
 
 where
  - *l* is the distance from the motors to x and y axes.
@@ -58,7 +58,7 @@ Output:
 
  Body Rate Controller calculates moments based on the following equations:
 
- ![body rate equations](animations/bodyrate.png)
+ ![body rate equations](animations/bodyrate.jpg)
 
  where
   - *p,q,r* are rotation speeds in body frame for roll, pitch, and yaw respectively
@@ -174,7 +174,7 @@ All the PID gain paramters can be found in `QuadControlParams.txt`:
 
 # Results
 
-Here's some of the simulated scenarios used to tune and test Controller.
+Here are some of the simulated scenarios used to tune and test Controller.
 
 ## Position Control
 In this scenario I've tested if controller can bring quadcopter to sligthly adjusted position and yaw and how fast quadcopter converges to the new state.
