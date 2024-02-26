@@ -70,10 +70,24 @@ VehicleCommand QuadControl::GenerateMotorCommands(float collThrustCmd, V3F momen
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
-  cmd.desiredThrustsN[0] = mass * 9.81f / 4.f; // front left
-  cmd.desiredThrustsN[1] = mass * 9.81f / 4.f; // front right
-  cmd.desiredThrustsN[2] = mass * 9.81f / 4.f; // rear left
-  cmd.desiredThrustsN[3] = mass * 9.81f / 4.f; // rear right
+  float l = L / sqrt(2.);  // distance from the motors to axes
+  
+  // motor order: front-left, front-right, rear-right, rear-left
+
+  float c = collThrustCmd;          // F1 + F2 + F3 + F4
+  float p = momentCmd.x / l;        // F1 - F2 - F3 + F4
+  float q = momentCmd.y / l;        // F1 + F2 - F3 - F4
+  float r = momentCmd.z / kappa;    // -F1 + F2 - F3 + F4
+
+  float F1 = (c + p + q + r) / 4.;
+  float F2 = (c - p + q - r) / 4.;
+  float F3 = (c + p - q - r) / 4.;
+  float F4 = (c - p - q + r) / 4.;
+
+  cmd.desiredThrustsN[0] = CONSTRAIN(F1, minMotorThrust, maxMotorThrust);
+  cmd.desiredThrustsN[1] = CONSTRAIN(F2, minMotorThrust, maxMotorThrust);
+  cmd.desiredThrustsN[2] = CONSTRAIN(F3, minMotorThrust, maxMotorThrust);
+  cmd.desiredThrustsN[3] = CONSTRAIN(F4, minMotorThrust, maxMotorThrust);
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -97,8 +111,10 @@ V3F QuadControl::BodyRateControl(V3F pqrCmd, V3F pqr)
   V3F momentCmd;
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-
-  
+  V3F err = pqrCmd - pqr;
+  momentCmd.x = Ixx * kpPQR.x * err.x;
+  momentCmd.y = Iyy * kpPQR.y * err.y;
+  momentCmd.z = Izz * kpPQR.z * err.z;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -129,7 +145,22 @@ V3F QuadControl::RollPitchControl(V3F accelCmd, Quaternion<float> attitude, floa
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  float c_c = -collThrustCmd / mass;
 
+  float b_x_a = R(0, 2);
+  float b_x_c = accelCmd.x / c_c;
+  b_x_c = CONSTRAIN(b_x_c, -maxTiltAngle, maxTiltAngle);
+  float b_x_err = b_x_c - b_x_a;
+  float b_x_c_dot = kpBank * b_x_err;
+
+  float b_y_a = R(1, 2);
+  float b_y_c = accelCmd.y / c_c;
+  b_y_c = CONSTRAIN(b_y_c, -maxTiltAngle, maxTiltAngle);
+  float b_y_err = b_y_c - b_y_a;
+  float b_y_c_dot = kpBank * b_y_err;
+
+  pqrCmd.x = 1 / R(2, 2) * (R(1, 0) * b_x_c_dot - R(0, 0) * b_y_c_dot);
+  pqrCmd.y = 1 / R(2, 2) * (R(1, 1) * b_x_c_dot - R(0, 1) * b_y_c_dot);
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
